@@ -25,3 +25,14 @@ image = pipe(prompt, num_inference_steps=20, generator = torch.Generator("cuda")
     
 image.save("astronaut_rides_horse.png")
 ```
+
+# サンプラー一覧
+
+| サンプラー名 | argument1 |  Diffusers | argument2 | 結果 | 
+----|----|----|----|----
+| ddpm.SimpleDDPMScheduler |  | DDPMScheduler || 同一 |
+| ddpm.SimpleDDIMScheduler |   |DDIMScheduler || 同一 |
+| euler.SimpleEulerDiscreteScheduler |   | EulerDiscreteScheduler| |同一 |
+| euler.SimpleEulerDiscreteScheduler |  ancestral=True| EulerAncestralDiscreteScheduler | |微妙に違う |
+| euler.SimpleHeunDiscreteScheduler |  | HeunDiscreteScheduler | | 同一 |
+
