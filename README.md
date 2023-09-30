@@ -12,12 +12,12 @@ from diffusers import StableDiffusionPipeline
 import torch
 
 model_id = "runwayml/stable-diffusion-v1-5"
-pipe = StableDiffusionPipeline.from_pretrained(model_id, torch_dtype=torch.float32)
+pipe = StableDiffusionPipeline.from_pretrained(model_id, torch_dtype=torch.float16)
 pipe = pipe.to("cuda")
 
 # replace scheduler
 from ddpm import SimpleDDPMScheduler
-pipe.scheduler = SimpleDDPMScheduler()
+pipe.scheduler = SimpleDDPMScheduler(v_prediction=False)
 
 seed = 4545
 prompt = "a photo of an astronaut riding a horse on mars"
