@@ -28,11 +28,12 @@ image.save("astronaut_rides_horse.png")
 
 # サンプラー一覧
 
-| サンプラー名 | argument1 |  Diffusers | argument2 | 結果 | 
-----|----|----|----|----
-| ddpm.SimpleDDPMScheduler |  | DDPMScheduler || 同一 |
-| ddpm.SimpleDDIMScheduler |   |DDIMScheduler || 同一 |
-| euler.SimpleEulerDiscreteScheduler |   | EulerDiscreteScheduler| |同一 |
-| euler.SimpleEulerDiscreteScheduler |  ancestral=True| EulerAncestralDiscreteScheduler | |微妙に違う |
-| euler.SimpleHeunDiscreteScheduler |  | HeunDiscreteScheduler | | 同一 |
-
+| サンプラー名 | argument1 |  Diffusers | 結果 | 
+----|----|----|----
+| ddpm.SimpleDDPMScheduler |  | DDPMScheduler | 同一 |
+| ddpm.SimpleDDIMScheduler |   |DDIMScheduler | 同一 |
+| euler.SimpleEulerDiscreteScheduler |   | EulerDiscreteScheduler |同一 |
+| euler.SimpleEulerDiscreteScheduler |  ancestral=True| EulerAncestralDiscreteScheduler | ほぼ同一 |
+| euler.SimpleHeunDiscreteScheduler |  | HeunDiscreteScheduler | 同一 |
+| dpm.SimpleDPMScheduler | order=2 | KDPM2DiscreteScheduler  | 同一 |
+| dpm.SimpleDPMScheduler | order=2, mode="dpm-solver++", multi_step=True | DPMSolverMultistepScheduler  | ほぼ同一 |
