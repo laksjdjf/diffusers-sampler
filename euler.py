@@ -3,7 +3,7 @@ from base import BaseOutput, BaseScheduler, randn_tensor_like
 
 
 class SimpleEulerDiscreteScheduler(BaseScheduler):
-    def __init__(self, v_prediction=False, schedule="linspace", ancestral=True):
+    def __init__(self, v_prediction=False, schedule="linspace", ancestral=False):
         super().__init__(v_prediction, schedule, variance_exploring=True)
         self.order = 1
         self.ancestral = ancestral
@@ -11,7 +11,7 @@ class SimpleEulerDiscreteScheduler(BaseScheduler):
     def step(self, model_output, timestep, sample, return_dict=False, generator=None, **kwargs):
         t, prev_t = self.get_t_and_prev_t(timestep)
 
-        if self.ancestral:
+        if self.ancestral: # 多めにノイズ除去
             sigma_up, sigma_down = self.get_ancestral_sigma(t, prev_t)
             dsigma = sigma_down - self.sigmas[t]
         else:
@@ -20,7 +20,7 @@ class SimpleEulerDiscreteScheduler(BaseScheduler):
         pred_original_sample, noise_pred = self.get_original_sample_and_noise(sample, model_output, t)
         prev_sample = sample + noise_pred * dsigma
 
-        if self.ancestral:
+        if self.ancestral: # 多めに除去した分だけノイズを加える
             ancestral_noise = randn_tensor_like(model_output, generator=generator)
             prev_sample = prev_sample + ancestral_noise * sigma_up
 
@@ -49,9 +49,10 @@ class SimpleHeunDiscreteScheduler(BaseScheduler):
             dsigma = self.sigmas[prev_t] - self.sigmas[t]
 
             # 次ステップのために保存
-            self.first_sample = sample
-            self.first_noise_pred = noise_pred
-            self.dsigma = dsigma
+            if prev_t > 0:
+                self.first_sample = sample
+                self.first_noise_pred = noise_pred
+                self.dsigma = dsigma
 
             prev_sample = sample + noise_pred * dsigma  # euler法による予測
             

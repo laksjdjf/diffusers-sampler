@@ -22,7 +22,6 @@ class SimpleDDPMScheduler(BaseScheduler):
         noise = randn_tensor_like(model_output, generator=generator)
         variance = self.betas_bar[prev_t] / self.betas_bar[t] * current_beta_t
 
-        # x_s
         prev_sample = mean_x0 + mean_xt + variance.sqrt() * noise
         
         if return_dict:

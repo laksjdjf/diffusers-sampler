@@ -54,8 +54,9 @@ class BaseScheduler:
         # sigma_0, ... , sigma_T
         self.sigmas = self.sqrt_betas_bar / self.sqrt_alphas_bar
 
+    # 生成用の時刻スケジューリング
     def set_timesteps(self, num_inference_steps, device="cuda"):
-        self.num_inference_steps = num_inference_steps
+        self.num_inference_steps = num_inference_steps # 生成ステップ数
         self.device = device
 
         if self.schedule == "karras":
@@ -66,30 +67,32 @@ class BaseScheduler:
                 num_inference_steps
             ) ** 7
 
-            #　めんどくさいので最近傍探索でやる
+            #　sigmas -> timesteps、めんどくさいので最近傍探索でやる
             diff =  karras_sigmas.view(-1, 1) - self.sigmas.view(1, -1)
             timesteps = torch.argmin(diff.abs(), dim=1) - 1 # [1, 1000] -> [0, 999]
         elif self.schedule == "linspace":
             # 0から999まで線形にスケジューリング
             timesteps = torch.linspace(0, self.num_timesteps - 1, num_inference_steps, dtype=float).round().clone()
-        else:
+        else: # leading
             step_ratio = self.num_timesteps // num_inference_steps
             timesteps = (torch.arange(0, num_inference_steps) * step_ratio)
             timesteps = timesteps + 1
 
         self.timesteps = timesteps.flip(0).clone().long().to(device)
 
-    # predict x0 from xt and model_output
-    def get_original_sample_and_noise(self, noisy_latents, model_output, t):
+    # predict x0,noise from xt, model_output
+    def get_original_sample_and_noise(self, sample, model_output, t):
+        scaled_sample = self.scale_model_input(sample, t-1)
         if self.v_prediction:
-            pred_original_sample = self.sqrt_alphas_bar[t] * noisy_latents - self.sqrt_betas_bar[t] * model_output
-            noise_pred = (pred_original_sample - self.sqrt_alphas_bar[t] * noisy_latents) / self.sqrt_betas_bar[t]
+            pred_original_sample = self.sqrt_alphas_bar[t] * scaled_sample - self.sqrt_betas_bar[t] * model_output
+            noise_pred = (scaled_sample - self.sqrt_alphas_bar[t] * pred_original_sample) / self.sqrt_betas_bar[t]
         else: # noise_predicialtion
-            pred_original_sample = (noisy_latents - self.sqrt_betas_bar[t] * model_output) / self.sqrt_alphas_bar[t]
+            pred_original_sample = (scaled_sample - self.sqrt_betas_bar[t] * model_output) / self.sqrt_alphas_bar[t]
             noise_pred = model_output
             
         return pred_original_sample, noise_pred
     
+    # 離れたtimestep間の分散
     def get_alpha_respacing(self, t, prev_t):
         return self.alphas_bar[t] / self.alphas_bar[prev_t]
     
@@ -99,7 +102,7 @@ class BaseScheduler:
     @property
     def init_noise_sigma(self):
         if self.variance_exploring:
-            return self.sigmas[-1] # 初期ノイズを分散発散型に置き換える
+            return self.sigmas[-1] # 初期ノイズを分散発散型に置き換えるための係数
         else:
             return 1.0
     
@@ -121,15 +124,16 @@ class BaseScheduler:
     
     # return index of t
     def get_timesteps_id(self, t):
-        return (self.timesteps == t).nonzero(as_tuple=True)[0][0]
+        return (self.timesteps == t).nonzero(as_tuple=True)[0][-1] # 二階のサンプラーのために最後の要素をとる
     
+    # unetへの入力tからその時刻t+1と次の時刻prev_tを取得
     def get_t_and_prev_t(self, t):
         if t == self.timesteps[-1]:
             return t+1, 0
         else:
             t_id = self.get_timesteps_id(t)
             return t+1, self.timesteps[t_id + 1].item() + 1
-        
+    
     def get_ancestral_sigma(self, t, prev_t):
         sigma_from = self.sigmas[t]
         sigma_to = self.sigmas[prev_t]
